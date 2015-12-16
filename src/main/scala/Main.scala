@@ -7,8 +7,7 @@ import org.apache.spark.mllib.classification.{SVMWithSGD, NaiveBayesModel, Naive
 
 object Main extends App {
   val classificator = new SentimentClassificator("sentiment_corpus.txt", 1000)
-
-
+  
   val points = classificator.citations map {c =>
     LabeledPoint(c.sentiment + 1, Vectors.dense(c.features))
   }

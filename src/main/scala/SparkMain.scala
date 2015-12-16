@@ -12,7 +12,7 @@ object SparkMain extends App {
   val conf = new SparkConf().setAppName("SentimentAnalyse").setMaster("local[4]")
   val sc = new SparkContext(conf)
 
-  val lines = sc.textFile("/Users/Mihail/Desktop/githubRepos/reql/SentimentAnalyse/Features.txt")
+  val lines = sc.textFile("Features.txt")
 
   val points = lines map {line =>
     val ar = line.split("\t")
