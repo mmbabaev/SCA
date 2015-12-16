@@ -1,59 +1,62 @@
+import java.io.PrintWriter
+
 import edu.arizona.sista.processors.Processor
 import edu.arizona.sista.processors.corenlp.CoreNLPProcessor
 import edu.arizona.sista.processors.Sentence
+import edu.arizona.sista.processors.fastnlp.FastNLPProcessor
 import edu.arizona.sista.struct.{DirectedGraph, DirectedGraphEdgeIterator}
+import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 
 import scala.annotation.tailrec
-import scala.collection.mutable
-
-import collection.JavaConverters._
 import scala.io.Source
+import scala.util.Random
 
-class SentimentClassificator(fileName: String) {
+class SentimentClassificator(fileName: String, citationsCount: Int) {
 
-  val lines = Source.fromFile(fileName).getLines().toList
-  val trainSentences = (lines map {
-    line =>
-      val ar = line.split("\t")
-      ar(3)
-  }).mkString(" ")
-  val proc:Processor = new CoreNLPProcessor(withDiscourse = true)
-  val doc = proc.annotate(trainSentences)
+  val allCitations = Citation.getCitationsFromFile(fileName)
 
-  val sentiments = lines map {
-    line =>
-      val ar = line.split("\t")
-      ar(2) match {
-        case "p" => Sentiment.positive
-        case "n" => Sentiment.negative
-        case _ => Sentiment.objective
-      }
+  val rand = new Random()
+
+  val citations = ((0 to citationsCount) map { _ =>
+    val index = rand.nextInt(allCitations.length)
+      allCitations(index)
+    }).toList
+
+  val sentences = citations map { c =>
+    c.words
   }
 
-  val train1Grams = createTrainNGramms(1)
-  val train2Grams = createTrainNGramms(2)
-  val train3Grams = createTrainNGramms(3)
-  val trainDependencies = createTrainDependencies
+  val trainDependencies: List[String] = citations flatMap { c => c.dependencies }
 
-  val trainLabeledPoints = lines.indices map {
-    i =>
-      val features = fs1FeaturesForSentence(doc.sentences(i)).toArray
-      LabeledPoint(sentiments(i), Vectors.dense(features))
+  val trainNGrams = List[Map[String, Double]](createTrainNGramms(1), createTrainNGramms(2), createTrainNGramms(3))
+
+  citations foreach (c => c.features = fs1FeaturesForSentence(c).toArray)
+
+  def createFeaturesFile(): Unit = {
+    val pw = new PrintWriter("Features.txt")
+    var i = 0
+    for(c <- citations) {
+      println(i)
+      i += 1
+      pw.write(c.sentiment + "\t" + fs1FeaturesForSentence(c).toArray.mkString(" ") + "\n")
+    }
+
+    pw.close()
   }
 
-  def fs1FeaturesForSentence(s: Sentence) = {
-    nGramFeatures(s, 1, train1Grams) ++
-      nGramFeatures(s, 2, train2Grams) ++
-      nGramFeatures(s, 3, train3Grams) ++
-      dependencyFeatures(s, trainDependencies)
+  def fs1FeaturesForSentence(citation: Citation) = {
+    val words = citation.words
+    val ngrams = ((0 to 2) flatMap {i => nGramFeatures(words, i + 1, trainNGrams(i)) }).toList
+    ngrams ++ dependencyFeatures(citation.dependencies, trainDependencies)
   }
 
-  def nGramsForSentence(sentence: Sentence, n: Int): Seq[String] = {
-    val words = sentence.words.filter(
+  def nGramsForSentence(sentence: List[String], n: Int): Seq[String] = {
+    val words = sentence.filter(
       word => !word.equals(".") && !word.equals("!") && !word.equals(",") && !word.equals("?"))
 
+    @tailrec
     def genGram(gram: String, i: Int, end: Int): String = {
       if (i == end) gram
       else genGram(gram + " " + words(i), i + 1, end)
@@ -67,9 +70,9 @@ class SentimentClassificator(fileName: String) {
   def createTrainNGramms(n: Int): Map[String, Double] = {
     // gram -> count of this gram
     var gramMap = Map[String, Double]()
-    for (sentence <- doc.sentences) {
+    for (sentence <- sentences) {
       // count each gram
-      for(gram <- nGramsForSentence(sentence, n)) {
+      for(gram <- nGramsForSentence(sentence, n).toSet[String]) {
         gramMap.get(gram) match {
           case Some(count: Double) => gramMap += (gram -> (count + 1))
           case None                => gramMap += (gram -> 1)
@@ -77,17 +80,17 @@ class SentimentClassificator(fileName: String) {
       }
     }
 
-    gramMap.keys.foreach(key => println(key + " -> " + gramMap(key)))
-
     // gram -> idf of gram
     val keys = gramMap.keys
-    keys.foreach(key => gramMap += (key -> math.log(doc.sentences.length / gramMap(key))))
+    keys.foreach(key => {
+      gramMap += (key -> math.log(sentences.length / gramMap(key)))
+    }
+    )
     gramMap
   }
 
-  def nGramFeatures(sentence: Sentence, n: Int, trainGrams: Map[String, Double]): List[Double] = {
+  def nGramFeatures(sentence: List[String], n: Int, trainGrams: Map[String, Double]): List[Double] = {
     val grams = nGramsForSentence(sentence, n)
-    println("Grams: " + grams)
     var res= List[Double]()
     trainGrams.keys foreach  {
       gram =>
@@ -101,42 +104,11 @@ class SentimentClassificator(fileName: String) {
     res.reverse
   }
 
-  def dependencyFeatures(sentence: Sentence, trainDependencies: List[String]) = {
-    val dependencies = dependenciesFromSentence(sentence)
+  def dependencyFeatures(dependencies: List[String], trainDependencies: List[String]) = {
     trainDependencies map {
       dep =>
         if (dependencies.contains(dep)) 1.0
         else 0.0
-    }
-  }
-
-  def createTrainDependencies: List[String] = {
-    val result = doc.sentences flatMap {
-      sentence =>
-        dependenciesFromSentence(sentence).map(el => el)
-    }
-    result.toList
-  }
-
-  def dependenciesFromSentence(sentence: Sentence): List[String] = {
-    @tailrec
-    def recDependencyList(acc: List[String], iterator: DirectedGraphEdgeIterator[String]): List[String] = {
-      if (!iterator.hasNext) {
-        return acc
-      }
-      val dep = iterator.next()
-      val strDep = dep._3 + "_" + sentence.words(dep._1) + "_" + sentence.words(dep._2)
-      recDependencyList(strDep :: acc, iterator)
-    }
-
-    val result = sentence.dependencies collect {
-      case dependencies: DirectedGraph[String] =>
-        val iterator = new DirectedGraphEdgeIterator[String](dependencies)
-        recDependencyList(List[String](), iterator)
-    }
-
-    result match {
-      case Some(r: List[String]) => r
     }
   }
 }
