@@ -11,16 +11,12 @@ import scala.io.Source
 
 
 object SparkMain extends App {
-  val conf = new SparkConf().setAppName("SentimentAnalyse").setMaster("local[1]")
+  val conf = new SparkConf().setAppName("SentimentAnalyse").setMaster("local[4]")
   val sc = new SparkContext(conf)
 
   val lines = sc.textFile("DoubleFeatures.txt")
-
-  var i = 0
-
+  
   val points = lines map {line =>
-    println(i)
-    i += 1
     val ar = line.split("\t")
     val features=  ar(1).split(" ") map(i => i.toDouble)
     LabeledPoint(ar(0).toDouble, Vectors.dense(features))
