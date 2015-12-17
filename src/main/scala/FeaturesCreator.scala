@@ -7,17 +7,17 @@ import org.apache.spark.{SparkContext, SparkConf}
 import scala.annotation.tailrec
 import scala.io.Source
 
-object FeaturesCreator extends App {
+object WordsAndDependenciesCreator extends App {
   val proc:Processor = new FastNLPProcessor(withDiscourse = true)
 
   val allLines = Source.fromFile("citation_sentiment_corpus.txt").getLines().toList
 
   println("total length: " + allLines.length)
 
-  (0 until 1) foreach(i => createFile(i * 1000, i*1000 + 999))
+  createFeaturesFile()
 
-  def createFile(from: Int, to: Int): Unit = {
-    val lines = allLines.slice(from, to)
+  def createFeaturesFile(): Unit = {
+    val lines = allLines
 
     val sentences = lines map {
       line =>
@@ -30,7 +30,7 @@ object FeaturesCreator extends App {
         val s = ar(0) + "\t" + ar(1) + "\t" + ar(2) + "\t" + words.mkString(" ") + "\t" + dependenciesFromSentence(doc.sentences(0)).mkString(" ")
         s
     }
-    new PrintWriter(from + "-" + to + "CITATIONS.txt") { write(sentences.mkString("\n")); close() }
+    new PrintWriter("sentiment_corpus.txt") { write(sentences.mkString("\n")); close() }
   }
 
   def dependenciesFromSentence(sentence: Sentence): List[String] = {

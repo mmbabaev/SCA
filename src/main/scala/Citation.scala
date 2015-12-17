@@ -6,9 +6,9 @@ import scala.io.Source
  * Created by Mihail on 08.12.15.
  */
 object Sentiment {
-  val positive = 1
-  val objective = 0
-  val negative = -1
+  val positive = 2
+  val objective = 1
+  val negative = 0
 }
 
 object Citation {
@@ -22,8 +22,7 @@ object Citation {
         case "n" => Sentiment.negative
         case "o" => Sentiment.objective
       }
-      val words = ar(3).split(" ").filter(
-        word => !word.equals(".") && !word.equals("!") && !word.equals(",") && !word.equals("?")).toList
+      val words = ar(3).split(" ").toList
       val deps = ar(4).split(" ").toList
       Citation(id1, id2, sentiment, words, deps)
     }

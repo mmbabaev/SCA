@@ -12,17 +12,10 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import scala.annotation.tailrec
 import scala.io.Source
 import scala.util.Random
+object DoubleFeaturesClassificator extends App {
 
-class SentimentClassificator(fileName: String, citationsCount: Int) {
-
-  val allCitations = Citation.getCitationsFromFile(fileName)
-
-  val rand = new Random()
-
-  val citations = ((0 to citationsCount) map { _ =>
-    val index = rand.nextInt(allCitations.length)
-      allCitations(index)
-    }).toList
+  val fileName = "sentiment_corpus.txt"
+  val citations = Citation.getCitationsFromFile(fileName)
 
   val sentences = citations map { c =>
     c.words
@@ -32,14 +25,11 @@ class SentimentClassificator(fileName: String, citationsCount: Int) {
 
   val trainNGrams = List[Map[String, Double]](createTrainNGramms(1), createTrainNGramms(2), createTrainNGramms(3))
 
-  citations foreach (c => c.features = fs1FeaturesForSentence(c).toArray)
+  createDoubleFeaturesFile()
 
-  def createFeaturesFile(): Unit = {
-    val pw = new PrintWriter("Features.txt")
-    var i = 0
+  def createDoubleFeaturesFile(): Unit = {
+    val pw = new PrintWriter("DoubleFeatures.txt")
     for(c <- citations) {
-      println(i)
-      i += 1
       pw.write(c.sentiment + "\t" + fs1FeaturesForSentence(c).toArray.mkString(" ") + "\n")
     }
 
