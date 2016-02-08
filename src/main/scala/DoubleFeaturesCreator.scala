@@ -29,8 +29,20 @@ object DoubleFeaturesClassificator extends App {
 
   def createDoubleFeaturesFile(): Unit = {
     val pw = new PrintWriter("DoubleFeatures.txt")
+    var i = 0
     for(c <- citations) {
-      pw.write(c.sentiment + "\t" + fs1FeaturesForSentence(c).toArray.mkString(" ") + "\n")
+      println(i)
+   	  i += 1
+      pw.write(c.sentiment + "\t")
+      for (feature <- fs1FeaturesForSentence(c).toArray) {
+      	if (feature == 0) {
+      	  pw.write("0 ")
+      	}
+      	else {
+        	pw.write(feature + " ")
+      	}
+      }
+      pw.write("\n")
     }
 
     pw.close()

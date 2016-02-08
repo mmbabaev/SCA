@@ -11,3 +11,5 @@ libraryDependencies ++= Seq(
     ),
   "org.clulab" %% "processors" % "5.7.1" classifier "models"
 )
+
+libraryDependencies += "net.ruippeixotog" %% "scala-scraper" % "0.1.2"

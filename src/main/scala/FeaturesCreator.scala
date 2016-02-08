@@ -12,25 +12,29 @@ object WordsAndDependenciesCreator extends App {
 
   val allLines = Source.fromFile("citation_sentiment_corpus.txt").getLines().toList
 
-  println("total length: " + allLines.length)
+  for (i <- 0 to 8) {
+    createFeaturesFile(i * 1000)
+  }
 
-  createFeaturesFile()
-
-  def createFeaturesFile(): Unit = {
-    val lines = allLines
+  def createFeaturesFile(i: Int): Unit = {
+    val lines = allLines.slice(i, i + 999)
+    var count: Int = 0
 
     val sentences = lines map {
       line =>
         val ar = line.split("\t")
-        val doc = proc.annotateFromSentences(Seq(line.split("\t")(3)))
+        val doc = proc.annotateFromSentences(Seq(ar(3)))
         val words = doc.sentences(0).words.filter { word =>
           !word.equals("''") && !word.equals(".") && !word.equals("!") && !word.equals(",") && !word.equals(":") && !word.equals("``") &&
           !word.equals("''") && !word.equals("-") && !word.equals(";") && !word.equals("''")
         }
-        val s = ar(0) + "\t" + ar(1) + "\t" + ar(2) + "\t" + words.mkString(" ") + "\t" + dependenciesFromSentence(doc.sentences(0)).mkString(" ")
-        s
+
+        println(count)
+        count += 1
+
+        ar(0) + "\t" + ar(1) + "\t" + ar(2) + "\t" + words.mkString(" ") + "\t" + dependenciesFromSentence(doc.sentences(0)).mkString(" ")
     }
-    new PrintWriter("sentiment_corpus.txt") { write(sentences.mkString("\n")); close() }
+    new PrintWriter("sentiment_corpus" + (i) + ".txt") { write(sentences.mkString("\n")); close() }
   }
 
   def dependenciesFromSentence(sentence: Sentence): List[String] = {
