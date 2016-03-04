@@ -13,3 +13,4 @@ libraryDependencies ++= Seq(
 )
 
 libraryDependencies += "net.ruippeixotog" %% "scala-scraper" % "0.1.2"
+libraryDependencies += "com.github.wookietreiber" %% "scala-chart" % "latest.integration"

@@ -18,11 +18,18 @@ object SignificantFeaturesFileCreator extends App {
   val w = Source.fromFile("significance/w.txt").mkString.split(", ")
   val d = "this, that, those, these, his, her, their, such, previous".split(", ")
 
+  val connectors =
+    "also, although, besides, but, despite, " +
+    "even though, furthermore, however, in addition, " +
+      "in spite of, instead, instead of, moreover, " +
+      "nonetheless, on the contrary, on the other hand, " +
+      "regardless of, still, then, though, whereas, while, yet".split(", ")
+
   createFeaturesFile()
 
   def createFeaturesFile() = {
-    var result = ""
     val pw = new PrintWriter("significantFeatures.txt")
+    val pwNorm = new PrintWriter("significantFeaturesNorm.txt")
 
     val files = new File("significance/txt").listFiles().toList
     for (file <- files) {
@@ -33,22 +40,23 @@ object SignificantFeaturesFileCreator extends App {
           val significant = if (split(1) == "Y") 0 else 1
           (split(0), significant)
         }
-        val s = featuresForPapersCitingTo(name, corpus.toSeq)
-        result += s
-        pw.write(s)
+        val result = featuresForPapersCitingTo(name, corpus.toSeq)
+        pw.write(result._1)
+        pwNorm.write(result._2)
       }
     }
-    println(result)
     pw.close()
+    pwNorm.close()
   }
 
-  def featuresForPapersCitingTo(fileName: String, corpus: Seq[(String, Int)]): String = {
+  def featuresForPapersCitingTo(fileName: String, corpus: Seq[(String, Int)]): (String, String) = {
     //val proc:Processor = new FastNLPProcessor(withDiscourse = true)
     val name = fileName
     val letter = name(0)
     val number = letter + name.substring(1, 3)
 
     var result = ""
+    var resultNorm = ""
 
     val browser = new Browser
     val doc = browser.parseFile("significance/html/" + name + ".html")
@@ -68,6 +76,7 @@ object SignificantFeaturesFileCreator extends App {
     var index = 0
 
     for (srcPaperHtml <- dstPaper.getElementsByClass("srcPaper")) {
+
       val srcId = corpus(index)._1
       val significant = corpus(index)._2
       index += 1
@@ -106,14 +115,25 @@ object SignificantFeaturesFileCreator extends App {
           formalCitationsCount += 1
 
           // f3 Acronyms
-          if (acronymRegex.findAllIn(text).nonEmpty) {
-            acronymsCount += 1
-          }
+          val acronymIterator = acronymRegex.findAllIn(text)
+          var acronyms = List[String]()
 
+          while(acronymIterator.hasNext) {
+            val acronym = "[A-Z][A-Z]+".r.findAllIn(acronymIterator.next()).next()
+            acronyms = acronym :: acronyms
+          }
 
           if (i + 1 != lines.length) {
             val nextText = regex.replaceFirstIn(lines(i + 1).toString, "")
 
+            // f3 Acronyms
+            if (acronyms.nonEmpty && acronyms.mkString("|").r.findAllIn(nextText).nonEmpty) {
+              println(text)
+              println(acronyms.mkString("|").r.findAllIn(nextText).next)
+              println()
+
+              acronymsCount += 1
+            }
             // f5 Pronouns
             if (nextText.startsWith("He ") || nextText.startsWith("She ")) {
               pronounsCount += 1
@@ -148,21 +168,25 @@ object SignificantFeaturesFileCreator extends App {
         if (text.contains(author)) {
           sentencesWithAuthorsCount += 1
         }
-
-
       }
 
-      val total = 1
-      result += srcId + "\t" + name + "\t" +
-        formalCitationsCount / total + " " +
-        sentencesWithAuthorsCount / total + " " +
-        acronymsCount / total + " " +
-        pronounsCount / total + " " +
-        citationsListCount / total + " " +
-        workNounsCount / total + "\t" +
-        significant + "\n"
+      val total = sentences.length.toDouble
+
+      def featuresString(total: Double) = {
+        srcId + "\t" + name + "\t" +
+          formalCitationsCount / total + " " +
+          sentencesWithAuthorsCount / total + " " +
+          acronymsCount / total + " " +
+          pronounsCount / total + " " +
+          citationsListCount / total + " " +
+          workNounsCount / total + "\t" +
+          significant + "\n"
+      }
+
+      result += featuresString(1)
+      resultNorm += featuresString(total)
     }
 
-    result
+    (result, resultNorm)
   }
 }
