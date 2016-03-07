@@ -4,3 +4,11 @@
 .idea
 out
 *target
+test.txt
+"\320\232\320\276\320\277\320\270\321\217 test.txt"
+test.txt
+A92-1018Words.txt
+C98-2122Words.txt
+D07-1031Words.txt
+J90-1003Words.txt
+src/main/scala/GaussianNaiveBayes/ScalaTest.scala

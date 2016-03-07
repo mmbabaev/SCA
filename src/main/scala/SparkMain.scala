@@ -24,7 +24,7 @@ object SqlCreator {
 }
 
 object SparkMain extends App {
-  val conf = new SparkConf().setAppName("SentimentAnalyse").setMaster("local[4]")
+  val conf = new SparkConf().setAppName("SentimentAnalyse").setMaster("local[1]")
   val sc = new SparkContext(conf)
 
   val lines = sc.textFile("DoubleFeatures.txt")

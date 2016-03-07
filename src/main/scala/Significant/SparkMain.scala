@@ -1,6 +1,6 @@
 package Significant
 
-import GaussianNaiveBayes.GaussianNayveBayes
+import GaussianNaiveBayes.GaussianNaiveBayes
 import org.apache.spark.mllib.classification._
 import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
 import org.apache.spark.mllib.feature.StandardScaler
@@ -18,6 +18,12 @@ import scalax.chart.module.ChartFactories.BarChart
   */
 
 object SparkMain extends App {
+  import org.apache.log4j.Logger
+  import org.apache.log4j.Level
+
+  Logger.getLogger("org").setLevel(Level.OFF)
+  Logger.getLogger("akka").setLevel(Level.OFF)
+
   val conf = new SparkConf().setAppName("SentimentAnalyse").setMaster("local[4]")
   val sc = new SparkContext(conf)
 
@@ -36,7 +42,7 @@ object SparkMain extends App {
   var f0 = 0.0
   var p0 = 0.0
   var r0 = 0.0
-  val count = 100
+  val count = 1000
 
   for (i <- 0 until count) {
     val metrics = getMetrics()
@@ -57,19 +63,19 @@ object SparkMain extends App {
   println(s"F 0 score = $f0")
 
   def getMetrics() = {
-    val scaler = new StandardScaler(withMean = true, withStd = true).fit(points.map(x => x.features))
-    val data = points map { p => LabeledPoint(p.label, scaler.transform(p.features)) }
+//    val scaler = new StandardScaler(withMean = true, withStd = true).fit(points.map(x => x.features))
+//    val data = points map { p => LabeledPoint(p.label, scaler.transform(p.features)) }
 
-  //  val data = points
+    val data = points
 
     // Run training algorithm to build the model
-    val numClasses = 2
-    val categoricalFeaturesInfo = Map[Int, Int]()
-    val impurity = "gini"
-    val maxDepth = 10
-    val maxBins = 20
+//    val numClasses = 2
+//    val categoricalFeaturesInfo = Map[Int, Int]()
+//    val impurity = "gini"
+//    val maxDepth = 10
+//    val maxBins = 20
 
-    val Array(training, test) = data.randomSplit(Array(0.5, 0.5))
+    val Array(training, test) = data.randomSplit(Array(0.65, 0.35))
 
 
 //    val model = NaiveBayes.train(training, lambda = 1.0, modelType = "multinomial")
@@ -78,7 +84,7 @@ object SparkMain extends App {
 
  //   val model = SVMWithSGD.train(training, 100)
 
-    val model = new GaussianNayveBayes(training, sc.parallelize(Seq(0, 1)))
+    val model = new GaussianNaiveBayes(training, Seq(0.0, 1.0).toArray)
 
     // Compute raw scores on the test set
     val predictionAndLabels = test.map { case LabeledPoint(label, features) =>

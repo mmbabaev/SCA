@@ -2,6 +2,8 @@ package Significant
 
 import java.io.{PrintWriter, File}
 
+import edu.arizona.sista.processors.Processor
+import edu.arizona.sista.processors.fastnlp.FastNLPProcessor
 import net.ruippeixotog.scalascraper.browser.Browser
 import net.ruippeixotog.scalascraper.dsl.DSL._
 
@@ -18,18 +20,20 @@ object SignificantFeaturesFileCreator extends App {
   val w = Source.fromFile("significance/w.txt").mkString.split(", ")
   val d = "this, that, those, these, his, her, their, such, previous".split(", ")
 
-  val connectors =
-    "also, although, besides, but, despite, " +
-    "even though, furthermore, however, in addition, " +
-      "in spite of, instead, instead of, moreover, " +
-      "nonetheless, on the contrary, on the other hand, " +
-      "regardless of, still, then, though, whereas, while, yet".split(", ")
+  val connectors: Seq[String] =
+    ("Also, Although, Besides, But, Despite, " +
+    "Even though, Furthermore, However, In addition, " +
+      "In spite of, Instead, Instead of, Moreover, " +
+      "Nonetheless, On the contrary, On the other hand, " +
+      "Regardless of, Still, Then, Though, Whereas, While, Yet").split(", ")
+
 
   createFeaturesFile()
 
   def createFeaturesFile() = {
     val pw = new PrintWriter("significantFeatures.txt")
     val pwNorm = new PrintWriter("significantFeaturesNorm.txt")
+    var allWords = Set[String]()
 
     val files = new File("significance/txt").listFiles().toList
     for (file <- files) {
@@ -54,6 +58,7 @@ object SignificantFeaturesFileCreator extends App {
     val name = fileName
     val letter = name(0)
     val number = letter + name.substring(1, 3)
+    var allWords = Set[String]()
 
     var result = ""
     var resultNorm = ""
@@ -87,7 +92,7 @@ object SignificantFeaturesFileCreator extends App {
       var sentencesWithAuthorsCount = 0 // f2
       var acronymsCount = 0 // f3
       var pronounsCount = 0 // f5
-      //todo: f6 ???
+      var connectorsCount = 0 // f6
       var citationsListCount = 0 // f7
       var workNounsCount = 0 // f8
 
@@ -135,8 +140,15 @@ object SignificantFeaturesFileCreator extends App {
               acronymsCount += 1
             }
             // f5 Pronouns
-            if (nextText.startsWith("He ") || nextText.startsWith("She ")) {
+            if (nextText.startsWith("He ") || nextText.startsWith("She ") || nextText.startsWith("It ")) {
               pronounsCount += 1
+            }
+
+            // f6 connectors
+            for (connector <- connectors) {
+              if (nextText.startsWith(connector)) {
+                connectorsCount += 1
+              }
             }
 
             // f8 Work nouns
@@ -153,6 +165,8 @@ object SignificantFeaturesFileCreator extends App {
             }
           }
 
+
+
           // f7 Citation list
           val allCits = otherCitationRegex.findAllIn(text).toList
           if (allCits.length > 1)
@@ -160,8 +174,6 @@ object SignificantFeaturesFileCreator extends App {
           else if (allCits.nonEmpty && allCits.head.contains(";")) {
             citationsListCount += 1
           }
-
-          // f8 Work nouns
         }
 
         // f2 Authors
@@ -169,6 +181,27 @@ object SignificantFeaturesFileCreator extends App {
           sentencesWithAuthorsCount += 1
         }
       }
+
+
+
+//      val proc:Processor = new FastNLPProcessor(withDiscourse = false)
+//
+//      //val titleWords = proc.annotate(title).sentences(0).words
+//
+//      val doc = proc.annotateFromSentences(sentences)
+//
+//      val pwWords = new PrintWriter(fileName + "Words.txt")
+//
+//      for (sentence <- doc.sentences) {
+//        for (word <- sentence.words) {
+//          pwWords.write(word + "\n")
+//        }
+//      }
+//
+//      for (word <- proc.annotate(title).sentences(0).words) {
+//        pwWords.write(word + "\n")
+//      }
+//      pwWords.close()
 
       val total = sentences.length.toDouble
 
@@ -178,6 +211,7 @@ object SignificantFeaturesFileCreator extends App {
           sentencesWithAuthorsCount / total + " " +
           acronymsCount / total + " " +
           pronounsCount / total + " " +
+          connectorsCount / total + " " +
           citationsListCount / total + " " +
           workNounsCount / total + "\t" +
           significant + "\n"
@@ -186,6 +220,8 @@ object SignificantFeaturesFileCreator extends App {
       result += featuresString(1)
       resultNorm += featuresString(total)
     }
+
+
 
     (result, resultNorm)
   }

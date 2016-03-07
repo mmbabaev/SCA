@@ -8,14 +8,14 @@ import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable.ListBuffer
 
-class GaussianNaiveBayes(dataset: RDD[LabeledPoint], labels: RDD[Double]) extends ClassificationModel {
+class GaussianNaiveBayes(dataset: RDD[LabeledPoint], labels: Array[Double]) extends ClassificationModel {
   var pointsOfClass = Map[Double, RDD[LabeledPoint]]()
     labels.foreach { label =>
     val points = dataset filter { p => p.label == label }
     pointsOfClass += (label -> points)
   }
 
-  var summaries = summarizedByClass(dataset)
+  var summaries = summarizedByClass()
 
   def predict(testData: RDD[Vector]): RDD[Double] = {
     throw new Exception("not implemented yet!")
@@ -24,22 +24,31 @@ class GaussianNaiveBayes(dataset: RDD[LabeledPoint], labels: RDD[Double]) extend
 
   def predict(testData: Vector): Double = {
     val probs = calculateClassProbabilities(summaries, testData.toArray)
-    val max = probs.values.max
-    probs.keys.filter(k => probs(k) == max).toList.head
+    var max = 0.0
+    var result = 0.0
+
+    for ((k, v) <- probs) {
+      if (v > max) {
+        result = k
+        max = v
+      }
+    }
+
+    result
+    //probs.keys.filter(k => probs(k) == max).toList.head
   }
 
-  def calculateClassProbabilities(summaries: Map[Double, RDD[(Double, Double)]],
+  def calculateClassProbabilities(summaries: Map[Double, Array[(Double, Double)]],
                                   inputVector: Array[Double]) = {
     var probabilities = Map[Double, Double]()
 
-    for ((label, rddLabelSummaries) <- summaries) {
-      val labelSummaries = rddLabelSummaries.collect()
+    for ((label, labelSummaries) <- summaries) {
       probabilities += (label -> 1)
-      for (i <- 0 to labelSummaries.length) {
+      for (i <- labelSummaries.indices) {
         val mean = labelSummaries(i)._1
         val std = labelSummaries(i)._2
         val x = inputVector(i)
-        val prob = probabilities(label) * calculatePabability(x, mean, std)
+        val prob = probabilities(label) * calculateProbability(x, mean, std)
         probabilities -= label
         probabilities += (label -> prob)
       }
@@ -47,29 +56,33 @@ class GaussianNaiveBayes(dataset: RDD[LabeledPoint], labels: RDD[Double]) extend
     probabilities
   }
 
-  def calculatePabability(x: Double, mean: Double, std: Double) = {
+  def calculateProbability(x: Double, mean: Double, std: Double) = {
     val exponent = math.exp(-(math.pow(x - mean, 2) /
       (2 * math.pow(std, 2))))
     (1 / (math.sqrt(2 * math.Pi) * std)) * exponent
   }
 
-  def summarizedByClass(dataset: RDD[LabeledPoint]) = {
-    var summaries = Map[Double, RDD[(Double, Double)]]()
+  def summarizedByClass() = {
+    var summaries = Map[Double, Array[(Double, Double)]]()
 
     for ((label, points) <- pointsOfClass) {
       summaries += (label -> summarize(points))
     }
+
     summaries
   }
 
-  def summarize(dataset: RDD[LabeledPoint]): RDD[(Double, Double)] = {
-    val result = dataset map {
-      point => {
-        val features = point.features.toArray
-        ( meanNumbers(features), stdev(features) )
-      }
+  def summarize(dataset: RDD[LabeledPoint]): Array[(Double, Double)] = {
+    val featuresList = (dataset map { p => p.features.toArray }).collect()
+    val result = featuresList.head.indices map {
+      index =>
+        val numbers = featuresList map {
+          features => features(index)
+        }
+        (meanNumbers(numbers), stdev(numbers))
     }
-    result
+
+    result.toArray
   }
 
   def meanNumbers(numbers: Array[Double]) = {
