@@ -5,6 +5,7 @@ import scala.io.Source
 /**
  * Created by Mihail on 08.12.15.
  */
+
 object Sentiment {
   val positive = 2
   val objective = 1

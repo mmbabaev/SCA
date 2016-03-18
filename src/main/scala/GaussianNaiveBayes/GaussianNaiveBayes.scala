@@ -21,7 +21,6 @@ class GaussianNaiveBayes(dataset: RDD[LabeledPoint], labels: Array[Double]) exte
     throw new Exception("not implemented yet!")
   }
 
-
   def predict(testData: Vector): Double = {
     val probs = calculateClassProbabilities(summaries, testData.toArray)
     var max = 0.0

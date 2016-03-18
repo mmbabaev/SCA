@@ -10,19 +10,6 @@ import org.apache.spark.{SparkContext, SparkConf}
 
 import scala.io.Source
 
-object SqlCreator {
-  val conf = new SparkConf().setAppName("SentimentAnalyse").setMaster("local[1]")
-  val sc = new SparkContext(conf)
-  val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-  import sqlContext.implicits._
-
-  case class Observer(sentiment: Double, features: Seq[Double])
-
-  val observers = sc.textFile("DoubleFeatures.txt").map(_.split("\t")).map(p => Observer(p(0).toInt, p(1).map(_.toDouble))).toDF()
-  observers.registerTempTable("observers")
-  observers.write.save("observers.parquet")
-}
-
 object SparkMain extends App {
   val conf = new SparkConf().setAppName("SentimentAnalyse").setMaster("local[1]")
   val sc = new SparkContext(conf)

@@ -6,6 +6,7 @@ import edu.arizona.sista.struct.{DirectedGraph, DirectedGraphEdgeIterator}
 import org.apache.spark.{SparkContext, SparkConf}
 import scala.annotation.tailrec
 import scala.io.Source
+import Extensions._
 
 object WordsAndDependenciesCreator extends App {
   val proc:Processor = new FastNLPProcessor(withDiscourse = true)
@@ -20,10 +21,21 @@ object WordsAndDependenciesCreator extends App {
     val lines = allLines.slice(i, i + 999)
     var count: Int = 0
 
+    val sentencesText = lines map {
+      line =>
+        val ar = line.split("\t")
+        ar(3).replaceCitationWithToken
+    }
+
+    val doc = proc.mkD
+
+
+
     val sentences = lines map {
       line =>
         val ar = line.split("\t")
         val doc = proc.annotateFromSentences(Seq(ar(3)))
+
         val words = doc.sentences(0).words.filter { word =>
           !word.equals("''") && !word.equals(".") && !word.equals("!") && !word.equals(",") && !word.equals(":") && !word.equals("``") &&
           !word.equals("''") && !word.equals("-") && !word.equals(";") && !word.equals("''")
@@ -34,7 +46,7 @@ object WordsAndDependenciesCreator extends App {
 
         ar(0) + "\t" + ar(1) + "\t" + ar(2) + "\t" + words.mkString(" ") + "\t" + dependenciesFromSentence(doc.sentences(0)).mkString(" ")
     }
-    new PrintWriter("sentiment_corpus" + (i) + ".txt") { write(sentences.mkString("\n")); close() }
+    new PrintWriter("sentiment_corpus" + i + ".txt") { write(sentences.mkString("\n")); close() }
   }
 
   def dependenciesFromSentence(sentence: Sentence): List[String] = {

@@ -1,17 +1,7 @@
 import java.io.PrintWriter
-
-import edu.arizona.sista.processors.Processor
-import edu.arizona.sista.processors.corenlp.CoreNLPProcessor
-import edu.arizona.sista.processors.Sentence
-import edu.arizona.sista.processors.fastnlp.FastNLPProcessor
-import edu.arizona.sista.struct.{DirectedGraph, DirectedGraphEdgeIterator}
-import org.apache.spark.{SparkContext, SparkConf}
-import org.apache.spark.mllib.linalg.Vectors
-import org.apache.spark.mllib.regression.LabeledPoint
-
 import scala.annotation.tailrec
-import scala.io.Source
-import scala.util.Random
+
+
 object DoubleFeaturesClassificator extends App {
 
   val fileName = "sentiment_corpus.txt"
@@ -21,7 +11,7 @@ object DoubleFeaturesClassificator extends App {
     c.words
   }
 
-  val trainDependencies: List[String] = citations flatMap { c => c.dependencies }
+  val trainDependencies: List[String] = (citations flatMap { c => c.dependencies }).distinct
 
   val trainNGrams = List[Map[String, Double]](createTrainNGramms(1), createTrainNGramms(2), createTrainNGramms(3))
 
