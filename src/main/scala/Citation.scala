@@ -14,7 +14,12 @@ object Sentiment {
 
 object Citation {
   def getCitationsFromFile(fileName: String): List[Citation] = {
-    val result = Source.fromFile(fileName).getLines() map { line =>
+    val lines = Source.fromFile(fileName).getLines() filter { line =>
+      val ar = line.split("\t")
+      ar.length != 4
+    }
+
+    val result = lines map { line =>
       val ar = line.split("\t")
       val id1 = ar(0)
       val id2 = ar(1)

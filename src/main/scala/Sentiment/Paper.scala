@@ -1,54 +1,58 @@
 package Sentiment
 
-import edu.arizona.sista.processors.Processor
+import Helper.CitationPatterns
+import edu.arizona.sista.processors.{Sentence, Processor}
 import edu.arizona.sista.processors.fastnlp.FastNLPProcessor
+import Helper.Extensions.{StringExtension, NLPProcExtension}
+import StringExtension._
+import org.apache.log4j.{Level, Logger}
 
+import scala.io.Source
 
-class Paper(val text: String, val targetPaperId: String) {
+class Paper(val text: String) {
   val proc:Processor = new FastNLPProcessor(withDiscourse = false)
-
-  val now = System.nanoTime
-
   var doc = proc.mkDocument(text)
+  println(text)
+  val sentences = doc.sentences
+  println(sentences.length)
 
-  val citationsSentences = doc.sentences.filter { sentence =>
-    val text = sentence.getSentenceText()
-    isHarvard(text) || isVancouver(text)
+  var citationSentences = doc.sentences filter { s => isCitation(s) }
+  val citationText = citationSentences map { c =>
+    c.getSentenceText().replaceCitationWithToken
+  }
+  val citationInfo = citationSentences map { c =>
+    CitationPatterns.ANY.findAllIn(c.getSentenceText()).next()
   }
 
-  val citationTextWithoutMark = citationsSentences.map { sentence =>
-    val text = sentence.getSentenceText()
-    val regex = if (isVancouver(text))
-      CitationPatterns.VANCOUVER
-    else CitationPatterns.HARVARD
+  doc = proc.mkDocumentFromSentences(citationText)
+  proc.tagPartsOfSpeech(doc)
+  proc.lemmatize(doc)
+  proc.parse(doc)
 
-    regex.r.replaceAllIn(text, "")
-  }.mkString(" ")
+  println(doc.sentences.length)
+  println(citationInfo.length)
 
-  val citationDoc = proc.mkDocument(citationTextWithoutMark)
-  proc.tagPartsOfSpeech(citationDoc)
-  proc.lemmatize(citationDoc)
-  proc.parse(citationDoc)
-  doc.clear()
+  // todo: index 0
+  val citations = for ( (cit, info) <- doc.sentences zip citationInfo) yield new Citation(cit, info, 0)
 
-  val citations = citationDoc.sentences.map { sentence =>
-    val text = sentence.getSentenceText()
-    var style = Style.Harvard
-    if (isVancouver(text)) style = Style.Vancouver
-    new Citation(sentence, this, style, 0, 0)
-  }
 
-  val micros = (System.nanoTime - now) / 1000000000
-  println("%d seconds".format(micros))
-
-  def isHarvard(s: String) = {
-    CitationPatterns.HARVARD.r.findFirstIn(s).nonEmpty
-  }
-
-  def isVancouver(s: String) = {
-    CitationPatterns.VANCOUVER.r.findFirstIn(s).nonEmpty
+  def isCitation(sentence: Sentence) = {
+    CitationPatterns.ANY.findAllIn(sentence.getSentenceText()).hasNext
   }
 }
 
+object TestPaper extends App {
+  //todo переобучить 3 svm 0vs1 2vs1 0vs2
+
+  Logger.getLogger("org").setLevel(Level.ERROR)
+  Logger.getLogger("akka").setLevel(Level.ERROR)
 
 
+  val text = Source.fromFile("testPaper.txt").getLines().mkString
+  val paper = new Paper(text)
+
+  for (cit <- paper.citations) {
+    println(cit.getFullText)
+    println(cit.getLabel)
+  }
+}

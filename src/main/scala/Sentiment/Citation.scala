@@ -1,79 +1,96 @@
 package Sentiment
 
-import Sentiment.Style.Style
+import Helper.{SparkContextSingleton, CitationPatterns}
 import edu.arizona.sista.processors.Sentence
 import edu.arizona.sista.struct.{DirectedGraph, DirectedGraphEdgeIterator}
+import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.mllib.feature.StandardScaler
+import org.apache.spark.mllib.regression.LabeledPoint
 import scala.annotation.tailrec
+import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 import scala.Enumeration
 
 
 object Citation {
-  val cl = new SentimentClassifier()
+  val sc = SparkContextSingleton.getInstance()
 
   // todo: создать файлы для загрузки обучения
-  val trainDependencies: List[String] = Source.fromFile("Sentiment/TrainDependencies.txt").getLines().toList
-  val trainNGrams = List[Map[String, Double]]()
+  val trainDependencies: List[String] = sc.textFile("trainDependencies.txt").collect().toList
+  println("checkpoint 1")
+
+  var trainNGrams: List[Map[String, Double]] = ((1 to 3) map { i =>
+    var map = Map[String, Double]()
+    for (line <- Source.fromFile(i + "GramsTrain.txt").getLines) {
+      val split = line.split("->")
+      map += (split(0) -> split(1).toDouble)
+    }
+    map
+  }).toList
+
+  println(trainNGrams.length)
+  println("checkpoint 2")
+
+  val cl = new OneVsOneSVM(sc)
 }
 
-class Citation(sentence: Sentence, source: Paper, style: Style, startIndex: Int, endIndex: Int) {
+class Citation(sentence: Sentence, info: String, index: Int) {
+  val dependencies = dependenciesFromSentence(sentence)
 
-  val dependencies = {
-    @tailrec
-    def recDependencyList(acc: List[String], iterator: DirectedGraphEdgeIterator[String]): List[String] = {
-      if (!iterator.hasNext) {
-        return acc
-      }
-      val dep = iterator.next()
-      val newAcc = if (dep._3.contains("punct")) {
-        acc
-      }
-      else {
-        val strDep = dep._3 + "_" + sentence.words(dep._1) + "_" + sentence.words(dep._2)
-        strDep :: acc
-      }
+  def getLabel = Citation.cl.predict(fs1Features().toArray)
 
-      recDependencyList(newAcc, iterator)
-    }
-
-    val result = sentence.dependencies collect {
-      case dependencies: DirectedGraph[String] =>
-        val iterator = new DirectedGraphEdgeIterator[String](dependencies)
-        recDependencyList(List[String](), iterator)
-    }
-
-    result match {
-      case Some(r: List[String]) => r
-    }
-  }
-
-  val fs1Features = {
+  def fs1Features() = {
     val words = sentence.words.toList
     val ngrams = ((0 to 2) flatMap {i => nGramFeatures(words, i + 1, Citation.trainNGrams(i)) }).toList
-    ngrams ++ dependencyFeatures(dependencies, Citation.trainDependencies)
+    val result = ngrams ++ dependencyFeatures(dependencies, Citation.trainDependencies)
+    result
   }
 
-  // todo: создать классификатор
-  // val sentiment = cl.predict(f1Features)
+  def dependenciesFromSentence(sentence: Sentence) = {
+    val depList = new ArrayBuffer[String]()
+
+    sentence.dependencies.foreach(dependencies => {
+      val iterator = new DirectedGraphEdgeIterator[String](dependencies)
+      while(iterator.hasNext) {
+        val dep = iterator.next
+
+        if (!dep._3.contains("punct") && !dep._3.contains("det")) {
+          val words = sentence.words
+          depList.append(dep._3 + "_" + words(dep._1) + "_" + words(dep._2))
+        }
+      }
+    })
+
+    depList.toList
+  }
 
   def nGramsForSentence(sentence: List[String], n: Int): Seq[String] = {
-    val words = sentence.filter(
-      word => !word.equals(".") && !word.equals("!") && !word.equals(",") && !word.equals("?"))
 
-    @tailrec
-    def genGram(gram: String, i: Int, end: Int): String = {
-      if (i == end) gram
-      else genGram(gram + " " + words(i), i + 1, end)
+    def concat(words: List[String], start: Int, end: Int) = {
+      val sb = new StringBuilder()
+      for (i <- start until end) {
+        val space = if (i > start) " " else ""
+        sb.append(space + words(i))
+      }
+      sb.toString().toLowerCase
     }
 
-    (0 to words.length - n) map {
-      i => genGram("", i, i + n)
+    val words = sentence
+
+    val ngrams = new ArrayBuffer[String]()
+
+    for (i <- 0 until words.length - n) {
+      ngrams.append(concat(words, i, i + n))
+    }
+    ngrams filter { gram =>
+      val ar = gram.split(" ")
+      !ar.contains("a") && !ar.contains("and") && !ar.contains("to") && !ar.contains("the") && !ar.contains("of") && !ar.contains("an")
     }
   }
 
   def nGramFeatures(sentence: List[String], n: Int, trainGrams: Map[String, Double]): List[Double] = {
     val grams = nGramsForSentence(sentence, n)
-    var res= List[Double]()
+    var res = List[Double]()
     trainGrams.keys foreach  {
       gram =>
         if (grams.contains(gram)) {
@@ -94,24 +111,13 @@ class Citation(sentence: Sentence, source: Paper, style: Style, startIndex: Int,
     }
   }
 
-  def getFullText() = {
+  def getFullText = {
     sentence.getSentenceText()
   }
-
-  def getCitationText() = {
-    val text = getFullText()
-
-    val regex = if (style == Style.Harvard)
-      CitationPatterns.HARVARD
-    else
-      CitationPatterns.VANCOUVER
-
-    regex.r.replaceAllIn(text, "")
-  }
 }
 
-object Style extends Enumeration {
-  type Style = Value
-  val Harvard, Vancouver = Value
-}
+//object Style extends Enumeration {
+//  type Style = Value
+//  val Harvard, Vancouver = Value
+//}
 
