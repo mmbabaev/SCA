@@ -30,7 +30,7 @@ object WordsAndDependenciesCreator extends App {
     val sentencesText = lines map {
       line =>
         val ar = line.split("\t")
-        var text = ar(3).replace("\\]", "]")
+        var text = ar(3).replace("\\]", ")")
         text = text.replace("\\[", "(")
         text = text.replace("[", "(")
         text = text.replace("]", ")")
@@ -42,14 +42,8 @@ object WordsAndDependenciesCreator extends App {
           println(result)
           println()
         }
-        else {
-//          println(ar(3))
-//          println(CitationPatterns.ANY.findAllIn(ar(3)).next())
-//          println()
-        }
+
         result
-        // sentiment + text
-        //ar(3).replaceCitationWithToken
     }
 
     println("Total citations without token: " + count)

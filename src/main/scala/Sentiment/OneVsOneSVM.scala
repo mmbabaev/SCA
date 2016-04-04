@@ -9,11 +9,15 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.mllib.linalg.Vectors
 
-import org.apache.spark.mllib.feature.StandardScalerModel
+import org.apache.spark.mllib.feature.{StandardScaler, StandardScalerModel}
 
 object OneVsOneSVM {
   def load(sc: SparkContext, data: RDD[LabeledPoint]): Unit = {
-    var points = data filter(p => p.label != 2)
+    val scaler = new StandardScaler(withMean = true, withStd = true).fit(data.map(x => x.features))
+    var points = data map { p => LabeledPoint(p.label, scaler.transform(p.features)) }
+
+    points = data filter(p => p.label != 2)
+
     val svm0vs1 = SVMWithSGD.train(points, 10, 2, 0.01)
     svm0vs1.save(sc, "svm0vs1")
 
@@ -52,8 +56,8 @@ class OneVsOneSVM(sc: SparkContext) {
   svm0vs2.clearThreshold()
   svm2vs1.clearThreshold()
 
-  val means = Vectors.dense((sc.textFile("means.txt") map { line => line.toDouble }).collect)
-  val stds  = Vectors.dense((sc.textFile("stds.txt")  map { line => line.toDouble }).collect)
+  val means = Vectors.dense((sc.textFile("means.txt") map { _.toDouble }).collect)
+  val stds  = Vectors.dense((sc.textFile("stds.txt")  map { _.toDouble }).collect)
   val scalerModel = new StandardScalerModel(stds, means)
 
   def predict(features: Array[Double]): Double = {
@@ -67,6 +71,8 @@ class OneVsOneSVM(sc: SparkContext) {
     val label0Score = -prediction0vs1 - prediction0vs2
     val label1Score = prediction0vs1 + prediction2vs1
     val label2Score = prediction0vs2 - prediction2vs1
+
+    //println(label0Score + "\n" + label1Score + "\n" + label2Score + "\n")
 
     if (label0Score > label1Score) {
       if (label0Score > label2Score) 0 else 2

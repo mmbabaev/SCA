@@ -12,3 +12,4 @@ C98-2122Words.txt
 D07-1031Words.txt
 J90-1003Words.txt
 src/main/scala/GaussianNaiveBayes/ScalaTest.scala
+*.txt

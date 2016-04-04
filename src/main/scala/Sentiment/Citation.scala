@@ -15,9 +15,7 @@ import scala.Enumeration
 object Citation {
   val sc = SparkContextSingleton.getInstance()
 
-  // todo: создать файлы для загрузки обучения
   val trainDependencies: List[String] = sc.textFile("trainDependencies.txt").collect().toList
-  println("checkpoint 1")
 
   var trainNGrams: List[Map[String, Double]] = ((1 to 3) map { i =>
     var map = Map[String, Double]()
@@ -28,14 +26,13 @@ object Citation {
     map
   }).toList
 
-  println(trainNGrams.length)
-  println("checkpoint 2")
-
   val cl = new OneVsOneSVM(sc)
 }
 
-class Citation(sentence: Sentence, info: String, index: Int) {
+class Citation(sentence: Sentence, val infos: Seq[String], val index: Int) {
   val dependencies = dependenciesFromSentence(sentence)
+
+  lazy val label = getLabel
 
   def getLabel = Citation.cl.predict(fs1Features().toArray)
 

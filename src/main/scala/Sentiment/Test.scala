@@ -36,16 +36,17 @@ object Test extends App {
   val means = scaler.mean.toArray
   val stds = scaler.std.toArray
 
-  var pw = new PrintWriter("means.txt")
-  for (m <- means) {
-    pw.write(m + "\n")
-  }
-  pw.close()
-
-  pw = new PrintWriter("stds.txt")
-  for (s <- stds) {
-    pw.write(s + "\n")
-  }
-  pw.close()
+  OneVsOneSVM.load(sc, data)
+//  var pw = new PrintWriter("means.txt")
+//  for (m <- means) {
+//    pw.write(m + "\n")
+//  }
+//  pw.close()
+//
+//  pw = new PrintWriter("stds.txt")
+//  for (s <- stds) {
+//    pw.write(s + "\n")
+//  }
+//  pw.close()
   //val model = new OneVsOneSVM(sc, data)
 }
