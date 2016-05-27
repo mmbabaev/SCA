@@ -1,24 +1,39 @@
 package GaussianNaiveBayes
 
-import org.apache.spark.api.java.JavaRDD
+import java.io.PrintWriter
+
 import org.apache.spark.mllib.classification.ClassificationModel
-import org.apache.spark.mllib.linalg.Vector
+import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 
-import scala.collection.mutable.ListBuffer
+import scala.io.Source
 
-class GaussianNaiveBayes(dataset: RDD[LabeledPoint], labels: Array[Double]) extends ClassificationModel {
-  var pointsOfClass = Map[Double, RDD[LabeledPoint]]()
+class GaussianNaiveBayes() extends ClassificationModel {
+
+  var summaries = Map[Double, Array[(Double, Double)]]()
+
+  private var pointsOfClass = Map[Double, RDD[LabeledPoint]]()
+
+  def this(dataset: RDD[LabeledPoint]) = {
+    this()
+    val labels = (dataset map { _.label }).distinct().collect()
+
+
     labels.foreach { label =>
-    val points = dataset filter { p => p.label == label }
-    pointsOfClass += (label -> points)
-  }
+      val points = dataset filter { p => p.label == label }
+      pointsOfClass += (label -> points)
+    }
 
-  var summaries = summarizedByClass()
+    summaries = summarizedByClass()
+  }
 
   def predict(testData: RDD[Vector]): RDD[Double] = {
     throw new Exception("not implemented yet!")
+  }
+
+  def predict(testData: Array[Double]): Double = {
+    predict(Vectors.dense(testData))
   }
 
   def predict(testData: Vector): Double = {
@@ -35,6 +50,18 @@ class GaussianNaiveBayes(dataset: RDD[LabeledPoint], labels: Array[Double]) exte
 
     result
     //probs.keys.filter(k => probs(k) == max).toList.head
+  }
+
+  def save(filePath: String): Unit = {
+    val pw = new PrintWriter(filePath)
+    for ((label, ar) <- summaries) {
+      pw.write(label + "\t")
+      for (elem <- ar) {
+        pw.write(elem._1 + "_" + elem._2 + " ")
+      }
+      pw.write("\n")
+    }
+    pw.close()
   }
 
   def calculateClassProbabilities(summaries: Map[Double, Array[(Double, Double)]],
@@ -104,5 +131,23 @@ class GaussianNaiveBayes(dataset: RDD[LabeledPoint], labels: Array[Double]) exte
   }
 }
 
+object GaussianNaiveBayes {
+  def load(filename: String) = {
+    var summaries = Map[Double, Array[(Double, Double)]]()
 
+    for (line <- Source.fromFile(filename).getLines()) {
+      val tabSplit = line.split("\t")
+      val label = tabSplit(0).toDouble
+      val ar = tabSplit(1).split(" ") map { elem =>
+        val spaceSplit = elem.split("_")
+        (spaceSplit(0).toDouble, spaceSplit(1).toDouble)
+      }
 
+      summaries += (label -> ar)
+    }
+
+    val model = new GaussianNaiveBayes()
+    model.summaries = summaries
+    model
+  }
+}

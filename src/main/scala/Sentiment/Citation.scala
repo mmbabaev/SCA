@@ -1,6 +1,7 @@
 package Sentiment
 
-import Helper.{SparkContextSingleton, CitationPatterns}
+import HelperFunctions.{SparkContextSingleton, CitationPatterns}
+import Sentiment.SVM.{TreeSVM, OneVsManySVM, OneVsOneSVM}
 import edu.arizona.sista.processors.Sentence
 import edu.arizona.sista.struct.{DirectedGraph, DirectedGraphEdgeIterator}
 import org.apache.spark.{SparkContext, SparkConf}
@@ -13,7 +14,7 @@ import scala.Enumeration
 
 
 object Citation {
-  val sc = SparkContextSingleton.getInstance()
+  val sc = SparkContextSingleton.getInstance
 
   val trainDependencies: List[String] = sc.textFile("trainDependencies.txt").collect().toList
 
@@ -26,18 +27,24 @@ object Citation {
     map
   }).toList
 
-  val cl = new OneVsOneSVM(sc)
+  //val cl = new OneVsOneSVM()
+  val cl = new OneVsManySVM()
+  //val cl = new TreeSVM()
 }
 
-class Citation(sentence: Sentence, val infos: Seq[String], val index: Int) {
+class Citation(sentence: Sentence, val infos: Seq[String], val index: Int, val fullText: String) {
   val dependencies = dependenciesFromSentence(sentence)
 
   lazy val label = getLabel
 
-  def getLabel = Citation.cl.predict(fs1Features().toArray)
+  def getLabel = Citation.cl.predict(fs1Features().toArray) match {
+    case 0 => "negative"
+    case 1 => "objective"
+    case 2 => "positive"
+  }
 
   def fs1Features() = {
-    val words = sentence.words.toList
+    val words = sentence.words.toList map { _.toLowerCase }
     val ngrams = ((0 to 2) flatMap {i => nGramFeatures(words, i + 1, Citation.trainNGrams(i)) }).toList
     val result = ngrams ++ dependencyFeatures(dependencies, Citation.trainDependencies)
     result
@@ -109,7 +116,24 @@ class Citation(sentence: Sentence, val infos: Seq[String], val index: Int) {
   }
 
   def getFullText = {
-    sentence.getSentenceText()
+    fullText
+  }
+
+  def hasCitationList: Boolean = {
+    if (infos.length > 1) true
+    else {
+      val info = infos(0)
+
+      if (info.startsWith("[") && (info.contains("-") || info.contains(",")))
+        return true
+
+      val years = "[0-9]{4}".r.findAllIn(info).toList
+      if (years.length > 1) {
+        return true
+      }
+
+      false
+    }
   }
 }
 

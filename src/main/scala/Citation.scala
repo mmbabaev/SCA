@@ -1,10 +1,5 @@
-import edu.stanford.nlp.ling.Sentence
-
 import scala.io.Source
-
-/**
- * Created by Mihail on 08.12.15.
- */
+import HelperFunctions.Helper.windowBasedNegation
 
 object Sentiment {
   val positive = 2
@@ -14,32 +9,30 @@ object Sentiment {
 
 object Citation {
   def getCitationsFromFile(fileName: String): List[Citation] = {
-    val lines = Source.fromFile(fileName).getLines() filter { line =>
-      val ar = line.split("\t")
-      ar.length != 4
-    }
+    val lines = Source.fromFile(fileName).getLines()
 
     val result = lines map { line =>
       val ar = line.split("\t")
-      val id1 = ar(0)
-      val id2 = ar(1)
-      val sentiment = ar(2) match {
+      val sentiment = ar(0) match {
         case "p" => Sentiment.positive
         case "n" => Sentiment.negative
         case "o" => Sentiment.objective
       }
-      val words = ar(3).split(" ").toList
-      val deps = ar(4).split(" ").toList
-      Citation(id1, id2, sentiment, words, deps)
+      val words = windowBasedNegation(ar(1).split(" "), 15).toList
+     // val words = ar(1).split(" ").toList
+      val deps = if (ar.length == 3)
+        ar(2).split(" ").toList
+      else
+        List[String]()
+
+      Citation(sentiment, words, deps)
     }
 
     result.toList
   }
 }
 
-case class Citation(id1: String,
-                    id2: String,
-                    sentiment: Double,
+case class Citation(sentiment: Double,
                     words: List[String],
                     dependencies: List[String]) extends Serializable {
   var features = Array[Double]()

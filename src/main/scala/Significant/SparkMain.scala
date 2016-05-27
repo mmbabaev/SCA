@@ -1,7 +1,6 @@
 package Significant
 
 import GaussianNaiveBayes.GaussianNaiveBayes
-import org.apache.spark.mllib.classification._
 import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
 import org.apache.spark.mllib.feature.StandardScaler
 import org.apache.spark.mllib.linalg.Vectors
@@ -24,7 +23,7 @@ object SparkMain extends App {
   Logger.getLogger("org").setLevel(Level.OFF)
   Logger.getLogger("akka").setLevel(Level.OFF)
 
-  val conf = new SparkConf().setAppName("SentimentAnalyse").setMaster("local[4]")
+  val conf = new SparkConf().setAppName("SentimentAnalyse").setMaster("local[*]")
   val sc = new SparkContext(conf)
 
   val fileName = "significantFeatures.txt"
@@ -42,7 +41,7 @@ object SparkMain extends App {
   var f0 = 0.0
   var p0 = 0.0
   var r0 = 0.0
-  val count = 1000
+  val count = 1
 
   for (i <- 0 until count) {
     val metrics = getMetrics()
@@ -68,23 +67,11 @@ object SparkMain extends App {
 
     val data = points
 
-    // Run training algorithm to build the model
-//    val numClasses = 2
-//    val categoricalFeaturesInfo = Map[Int, Int]()
-//    val impurity = "gini"
-//    val maxDepth = 10
-//    val maxBins = 20
-
     val Array(training, test) = data.randomSplit(Array(0.65, 0.35))
 
 
-//    val model = NaiveBayes.train(training, lambda = 1.0, modelType = "multinomial")
-//    val model = DecisionTree.trainClassifier(training, numClasses, categoricalFeaturesInfo, impurity, maxDepth, maxBins)
-//    val model = new LogisticRegressionWithLBFGS().setNumClasses(2).run(training)
-
- //   val model = SVMWithSGD.train(training, 100)
-
-    val model = new GaussianNaiveBayes(training, Seq(0.0, 1.0).toArray)
+    val model = new GaussianNaiveBayes(data)
+    model.save("modelGNB.txt")
 
     // Compute raw scores on the test set
     val predictionAndLabels = test.map { case LabeledPoint(label, features) =>

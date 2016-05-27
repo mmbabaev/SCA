@@ -1,15 +1,11 @@
 import java.io.PrintWriter
-import Helper.CitationPatterns
-import Helper.Extensions.{StringExtension, NLPProcExtension}
-import edu.arizona.sista.processors.corenlp.CoreNLPProcessor
+import HelperFunctions.Extensions.{StringExtension, NlpExtension}
+import HelperFunctions.Metadata
 import edu.arizona.sista.processors.fastnlp.FastNLPProcessor
 import edu.arizona.sista.processors.{Sentence, Processor}
-import edu.arizona.sista.struct.{DirectedGraph, DirectedGraphEdgeIterator}
-import org.apache.spark.{SparkContext, SparkConf}
-import scala.annotation.tailrec
-import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 import StringExtension._
+import NlpExtension.sentenceDependencies
 
 object WordsAndDependenciesCreator extends App {
   val proc:Processor = new FastNLPProcessor(withDiscourse = true)
@@ -21,12 +17,15 @@ object WordsAndDependenciesCreator extends App {
   def createFeaturesFile(): Unit = {
     val lines = allLines
 
+
     val labels = lines map {
       line =>
         line.split("\t")(2)
     }
 
     var count = 0
+    var targetCount = 0
+
     val sentencesText = lines map {
       line =>
         val ar = line.split("\t")
@@ -35,7 +34,24 @@ object WordsAndDependenciesCreator extends App {
         text = text.replace("[", "(")
         text = text.replace("]", ")")
 
-        val result = text.replaceCitationWithToken
+        val targetId = ar(1)
+        println(targetId)
+
+//        val (author, year) = try{Metadata.authorAndYear(targetId)}
+//        catch {
+//          case e =>
+//            println("error: " + targetId)
+//            ("<kek>", "<kek>")
+//        }
+//
+//        //todo: заменить имена? рефактор?
+//        var result = text.replaceHarvardCitationsWithToken(author, year)
+//        if (result == text) {
+//          println("err: " + result)
+//          targetCount += 1
+//          println()
+//        }
+        val result = text.replaceHarvardCitationsWithToken
 
         if (result == text) {
           count += 1
@@ -47,6 +63,7 @@ object WordsAndDependenciesCreator extends App {
     }
 
     println("Total citations without token: " + count)
+    println("Total citations without target token: " + targetCount)
 
     val doc = proc.mkDocumentFromSentences(sentencesText)
     proc.tagPartsOfSpeech(doc)
@@ -63,29 +80,11 @@ object WordsAndDependenciesCreator extends App {
         }
 
         index += 1
-        "id1" + "\t" + "id2" + "\t" + labels(index) + "\t" + words.mkString(" ") + "\t" + dependenciesFromSentence(sentence).mkString(" ")
+        labels(index) + "\t" + words.mkString(" ") + "\t" + sentence.dependencyList.mkString(" ")
     }
     new PrintWriter("sentiment_corpus.txt") { write(sentences.mkString("\n")); close() }
-    println("End")
   }
 
-  def dependenciesFromSentence(sentence: Sentence) = {
-    val depList = new ArrayBuffer[String]()
-
-    sentence.dependencies.foreach(dependencies => {
-      val iterator = new DirectedGraphEdgeIterator[String](dependencies)
-      while(iterator.hasNext) {
-        val dep = iterator.next
-
-        if (!dep._3.contains("punct") && !dep._3.contains("det")) {
-          val words = sentence.words
-          depList.append(dep._3 + "_" + words(dep._1) + "_" + words(dep._2))
-        }
-      }
-    })
-
-    depList.toList
-  }
 
 //  def dependenciesFromSentence(sentence: Sentence): List[String] = {
 //    @tailrec
