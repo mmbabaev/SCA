@@ -40,20 +40,20 @@ object Metadata {
   }
 }
 
-object MetadataTest extends App {
-  println(Metadata.authorAndYear("D10-1100"))
-  println(Metadata.authorAndYear("D10-1099"))
-}
-
-object MetadataFix extends App {
-  val text = "Then the words are tagged as inside a phrase (I), outside a phrase (O) or beginning of a phrase (B) (Ramhsaw and Marcus, 1995)."
-  println(text.replaceHarvardCitationsWithToken("Ramshaw", "1995"))
-
-
-//  val data = Source.fromFile("acl-metadata.txt").getLines().mkString("\n")
-//  val newData = data.replaceAll("\n\\}", "\\}")
-//  val pw = new PrintWriter("fix-acl-metadata.txt")
-//  pw.write(newData)
-//  pw.close()
-}
+//object MetadataTest extends App {
+//  println(Metadata.authorAndYear("D10-1100"))
+//  println(Metadata.authorAndYear("D10-1099"))
+//}
+//
+//object MetadataFix extends App {
+//  val text = "Then the words are tagged as inside a phrase (I), outside a phrase (O) or beginning of a phrase (B) (Ramhsaw and Marcus, 1995)."
+//  println(text.replaceHarvardCitationsWithToken("Ramshaw", "1995"))
+//
+//
+////  val data = Source.fromFile("acl-metadata.txt").getLines().mkString("\n")
+////  val newData = data.replaceAll("\n\\}", "\\}")
+////  val pw = new PrintWriter("fix-acl-metadata.txt")
+////  pw.write(newData)
+////  pw.close()
+//}
 

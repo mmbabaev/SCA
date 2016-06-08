@@ -1,11 +1,7 @@
 package GUI;
 
-import javax.swing.border.*;
-import javax.swing.event.*;
 import javax.swing.table.*;
-import java.awt.event.*;
 import javax.swing.*;
-import java.util.*;
 import java.awt.*;
 
 public class SentimentTable extends JFrame {
@@ -22,7 +18,7 @@ public class SentimentTable extends JFrame {
         };
 
         dtm.setDataVector(values,
-                new Object[]{ "Sentiment","Formal citations", "Text"});
+                new Object[]{"SentimentPackage","Formal citations", "Text"});
 
         JTable table = new JTable(dtm) {
             public Class getColumnClass(int column)
@@ -32,7 +28,7 @@ public class SentimentTable extends JFrame {
         };
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 
-        table.getColumn("Sentiment").setCellRenderer(new SentimentRenderer());
+        table.getColumn("SentimentPackage").setCellRenderer(new SentimentRenderer());
         table.getColumn("Formal citations").setCellRenderer(new TextAreaRenderer());
         table.getColumn("Formal citations").setCellEditor(new TextAreaEditor());
         table.getColumn("Text").setCellRenderer(new TextAreaRenderer());

@@ -11,8 +11,8 @@ import javax.swing.table._
 import scala.io.Source
 import scala.swing._
 import scala.swing.event.ButtonClicked
-import Sentiment.Citation
-import Sentiment.Paper
+import SentimentPackage.Citation
+import SentimentPackage.Paper
 import javax.swing.JOptionPane.showMessageDialog
 
 import swing._
@@ -92,7 +92,7 @@ object Gui extends App {
                 }
               }
               catch {
-                case e => showMessageDialog(null, "Wrong paper id!")
+                case e: Throwable => showMessageDialog(null, "Wrong paper id!")
               }
             }
           }

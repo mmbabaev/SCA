@@ -10,7 +10,7 @@ object SparkContextSingleton {
   Logger.getLogger("org").setLevel(Level.ERROR)
   Logger.getLogger("akka").setLevel(Level.ERROR)
 
-  val conf = new SparkConf().setAppName("SentimentAnalyse").setMaster("local[*]")
+  val conf = new SparkConf().setAppName("SentimentAnalyse").setMaster("local[*]").set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
   val sc = new SparkContext(conf)
 
   def getInstance = sc

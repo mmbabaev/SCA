@@ -2,7 +2,7 @@ package Significant
 
 import java.io.{PrintWriter, File}
 
-import Sentiment.Paper
+import SentimentPackage.Paper
 import edu.arizona.sista.processors.Processor
 import edu.arizona.sista.processors.fastnlp.FastNLPProcessor
 import net.ruippeixotog.scalascraper.browser.Browser
@@ -70,7 +70,7 @@ object SignificantFeaturesFileCreator extends App {
       }
       else year = 0
     }
-    catch { case _ => "year error" }
+    catch { case _: Throwable => "year error" }
 
     var result = ""
 
